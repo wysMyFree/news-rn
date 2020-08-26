@@ -7,7 +7,14 @@ import { createMaterialBottomTabNavigator } from '@react-navigation/material-bot
 import { createDrawerNavigator } from '@react-navigation/drawer'
 import { Platform } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { MainScreen, PostScreen, BookedScreen, AboutScreen, CreateScreen } from '../screens'
+import {
+  MainScreen,
+  PostScreen,
+  BookedScreen,
+  AboutScreen,
+  CreateScreen,
+  ChatScreen,
+} from '../screens'
 import { THEME } from '../theme'
 
 const Stack = createStackNavigator()
@@ -87,6 +94,17 @@ const AboutNavigation = () => {
     </Stack.Navigator>
   )
 }
+const ChatNavigation = () => {
+  return (
+    <Stack.Navigator screenOptions={screenOptionsConfig}>
+      <Stack.Screen
+        name='ChatScreen'
+        component={ChatScreen}
+        options={ChatScreen.navigationOptions}
+      />
+    </Stack.Navigator>
+  )
+}
 const CreateNavigation = () => {
   return (
     <Stack.Navigator screenOptions={screenOptionsConfig}>
@@ -109,6 +127,7 @@ export const AppNavigation = () => {
           labelStyle: { fontFamily: 'roboto-bold' },
         }}
       >
+        <Drawer.Screen name='Chat' component={ChatNavigation} />
         <Drawer.Screen name='Main' component={BottomNavigation} />
         <Drawer.Screen name='About' component={AboutNavigation} />
         <Drawer.Screen name='Create' component={CreateNavigation} />
