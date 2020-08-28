@@ -14,6 +14,7 @@ import {
   AboutScreen,
   CreateScreen,
   ChatScreen,
+  SecondChatScreen,
 } from '../screens'
 import { THEME } from '../theme'
 
@@ -105,6 +106,17 @@ const ChatNavigation = () => {
     </Stack.Navigator>
   )
 }
+const SecondChatNavigation = () => {
+  return (
+    <Stack.Navigator screenOptions={screenOptionsConfig}>
+      <Stack.Screen
+        name='SecondChatScreen'
+        component={SecondChatScreen}
+        options={SecondChatScreen.navigationOptions}
+      />
+    </Stack.Navigator>
+  )
+}
 const CreateNavigation = () => {
   return (
     <Stack.Navigator screenOptions={screenOptionsConfig}>
@@ -128,6 +140,7 @@ export const AppNavigation = () => {
         }}
       >
         <Drawer.Screen name='Chat' component={ChatNavigation} />
+        <Drawer.Screen name='SecondChat' component={SecondChatNavigation} />
         <Drawer.Screen name='Main' component={BottomNavigation} />
         <Drawer.Screen name='About' component={AboutNavigation} />
         <Drawer.Screen name='Create' component={CreateNavigation} />
