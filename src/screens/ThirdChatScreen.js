@@ -16,6 +16,7 @@ import {
 } from 'react-native'
 import Modal from 'react-native-modal'
 import { GiftedChat, Composer } from 'react-native-gifted-chat'
+import Editor, { displayTextWithMentions } from 'react-native-mentions-editor'
 
 export class ThirdChatScreen extends React.Component {
   constructor() {}

@@ -54,7 +54,7 @@ const userList = [
 export class SecondChatScreen extends React.Component {
   constructor() {
     super()
-    this.reqTimer = 0
+
     this.scrollViewRef = React.createRef()
 
     this.state = {
@@ -96,10 +96,10 @@ export class SecondChatScreen extends React.Component {
     })
   }
 
-  onSend(messages = []) {
-    console.log(messages)
+  onSend(message = []) {
+    console.log(message)
     this.setState((previousState) => ({
-      messages: GiftedChat.append(previousState.messages, messages),
+      messages: GiftedChat.append(previousState.messages, message),
     }))
   }
 
@@ -185,16 +185,15 @@ export class SecondChatScreen extends React.Component {
   }
 
   renderSuggestionsRow = ({ item }) => {
-    const dataObj = item
-    const profileImage = dataObj.image === null ? Images.userLogo : { uri: dataObj.image }
+    const profileImage = item.image === null ? Images.userLogo : { uri: item.image }
     return (
       <TouchableOpacity
         style={styles.suggestionClickStyle}
-        onPress={() => this.onSuggestionTap(dataObj)}
+        onPress={() => this.onSuggestionTap(item)}
       >
         <View style={styles.suggestionRowContainer}>
           <Image style={styles.userImage} source={profileImage} />
-          <Text style={styles.userNameText}>{dataObj.name}</Text>
+          <Text style={styles.userNameText}>{item.name}</Text>
         </View>
       </TouchableOpacity>
     )
