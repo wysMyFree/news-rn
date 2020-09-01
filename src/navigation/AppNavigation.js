@@ -139,8 +139,8 @@ export const AppNavigation = () => {
           labelStyle: { fontFamily: 'roboto-bold' },
         }}
       >
-        <Drawer.Screen name='Chat' component={ChatNavigation} />
         <Drawer.Screen name='SecondChat' component={SecondChatNavigation} />
+        <Drawer.Screen name='Chat' component={ChatNavigation} />
         <Drawer.Screen name='Main' component={BottomNavigation} />
         <Drawer.Screen name='About' component={AboutNavigation} />
         <Drawer.Screen name='Create' component={CreateNavigation} />

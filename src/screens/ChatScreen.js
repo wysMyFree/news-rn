@@ -2,112 +2,220 @@ import React from 'react'
 import { HeaderButtons, Item } from 'react-navigation-header-buttons'
 import { AppHeaderIcon } from '../components/AppHeaderIcon'
 import {
+  Platform,
+  Animated,
+  StyleSheet,
+  TextInput,
   View,
   Image,
   Text,
-  StyleSheet,
   Dimensions,
+  ActivityIndicator,
+  FlatList,
   TouchableOpacity,
-  Button,
-  Platform,
   KeyboardAvoidingView,
   YellowBox,
 } from 'react-native'
+import { GiftedChat, Send, Composer } from 'react-native-gifted-chat'
 import { THEME } from '../theme'
-import MentionsTextInput from 'react-native-mentions'
-import { GiftedChat, Send } from 'react-native-gifted-chat'
+import MessageBubble from '../components/MessageBubble/MessageBuble'
 
-const users = [
-  { id: 1, name: 'Raza Dar', username: 'mrazadar', gender: 'male' },
-  { id: 3, name: 'Atif Rashid', username: 'atif.rashid', gender: 'male' },
-  { id: 4, name: 'Peter Pan', username: 'peter.pan', gender: 'male' },
-  { id: 5, name: 'John Doe', username: 'john.doe', gender: 'male' },
-  { id: 6, name: 'Meesha Shafi', username: 'meesha.shafi', gender: 'female' },
-]
-
-const messages = [
+const userList = [
   {
-    _id: 1,
-    text: 'This is a quick reply. Do you love Gifted Chat? (radio) KEEP IT',
-    createdAt: new Date(),
-    quickReplies: {
-      type: 'radio', // or 'checkbox',
-      keepIt: true,
-      values: [
-        {
-          title: '😋 Yes',
-          value: 'yes',
-        },
-        {
-          title: '📷 Yes, let me show you with a picture!',
-          value: 'yes_picture',
-        },
-        {
-          title: '😞 Nope. What?',
-          value: 'no',
-        },
-      ],
-    },
-    user: {
-      _id: 2,
-      name: 'React Native',
-    },
+    id: 1,
+    name: 'Andy',
+    username: 'andy',
+    image: 'https://via.placeholder.com/300.png/09f/fff',
   },
   {
-    _id: 2,
-    text: 'This is a quick reply. Do you love Gifted Chat? (checkbox)',
-    createdAt: new Date(),
-    quickReplies: {
-      type: 'checkbox', // or 'checkbox',
-      values: [
-        {
-          title: 'Yes',
-          value: 'yes',
-        },
-        {
-          title: 'Yes, let me show you with a picture!',
-          value: 'yes_picture',
-        },
-        {
-          title: 'Nope. What?',
-          value: 'no',
-        },
-      ],
-    },
-    user: {
-      _id: 2,
-      name: 'React Native',
-    },
+    id: 2,
+    name: 'Boromir',
+    username: 'boromir',
+    image: 'https://via.placeholder.com/300.png/09f/fff',
   },
   {
-    _id: 9,
-    text: 'You are officially rocking GiftedChat.',
-    createdAt: new Date(),
-    system: true,
+    id: 3,
+    name: 'Luc',
+    username: 'luc',
+    image: 'https://via.placeholder.com/300.png/09f/fff',
+  },
+  {
+    id: 4,
+    name: 'Angel',
+    username: 'angel',
+    image: 'https://via.placeholder.com/300.png/09f/fff',
+  },
+  {
+    id: 5,
+    name: 'Casedy',
+    username: 'casedy',
+    image: 'https://via.placeholder.com/300.png/09f/fff',
+  },
+  {
+    id: 6,
+    name: 'User6',
+    username: 'user6',
+    image: 'https://via.placeholder.com/300.png/09f/fff',
   },
 ]
-const { height, width } = Dimensions.get('window')
 
-export const ChatScreen = () => {
-  const [value, setValue] = React.useState('')
-  const [keyword, setKeyword] = React.useState('')
+export class ChatScreen extends React.Component {
+  constructor() {
+    super()
+    this.state = {
+      messages: [
+        {
+          _id: 1,
+          text: 'Hello developer',
+          createdAt: new Date(),
+          user: {
+            _id: 2,
+            name: 'React Native',
+            avatar: 'https://placeimg.com/140/140/any',
+          },
+        },
+        {
+          _id: 2,
+          text: 'Hello developer',
+          createdAt: new Date(),
+          user: {
+            _id: 1,
+            name: 'React Native',
+            avatar: 'https://placeimg.com/140/140/any',
+          },
+        },
+      ],
+      messageText: '',
+      modalVisible: false,
+      isLoading: false,
+      userData: userList,
+      keyword: ' ',
+      previousChar: ' ',
+      suggestionRowHeight: new Animated.Value(0),
+    }
+  }
 
-  const onSuggestionTap = (username, hidePanel) => {
-    hidePanel()
-    const comment = value.slice(0, -keyword.length)
-    setValue(comment + '@' + username + ' ')
+  openSuggestionsPanel(height) {
+    Animated.timing(this.state.suggestionRowHeight, {
+      toValue: height ? height : this.props.suggestionRowHeight,
+      duration: 100,
+    }).start()
   }
-  const callback = (key) => {
-    setKeyword(key)
+
+  closeSuggestionsPanel() {
+    Animated.timing(this.state.suggestionRowHeight, {
+      toValue: 0,
+      duration: 100,
+    }).start()
   }
-  const onChangeText = (e) => {
-    // here we will check the hole Value for the ' @'
-    setValue(e)
+
+  onSend(message = []) {
+    console.log(message)
+    this.setState((previousState) => ({
+      messages: GiftedChat.append(previousState.messages, message),
+    }))
   }
-  const onSend = () => {}
-  const renderSuggestionsRow = ({ item }, hidePanel) => {
+
+  updateSuggestions = (keyword) => {
+    this.setState({ isLoading: true }, () => {
+      if (Array.isArray(userList)) {
+        if (keyword.slice(1) === '') {
+          this.setState({
+            userData: [...userList],
+            keyword,
+            isLoading: false,
+          })
+        } else {
+          const userDataList = userList.filter((obj) => obj.name.indexOf(keyword.slice(1)) !== -1)
+          this.setState({
+            userData: [...userDataList],
+            keyword,
+            isLoading: false,
+          })
+        }
+      }
+    })
+  }
+  identifyKeyword(val) {
+    if (this.state.modalVisible) {
+      console.log(val)
+      const pattern = new RegExp(`\\B@[a-z0-9_-]+|\\B@`, `gi`)
+      const keywordArray = val.match(pattern)
+      if (keywordArray && !!keywordArray.length) {
+        const lastKeyword = keywordArray[keywordArray.length - 1]
+        this.updateSuggestions(lastKeyword)
+      }
+    }
+  }
+  onTextChange = (value, props) => {
+    props.onTextChanged(value)
+    this.setState({ messageText: value })
+    const lastChar = value.substr(value.length - 1)
+    const wordBoundry = this.state.previousChar.trim().length === 0
+    if (lastChar === '@' && wordBoundry) {
+      this.openSuggestionsPanel(200)
+    } else if ((lastChar === ' ' && this.state.modalVisible) || value === '') {
+      this.closeSuggestionsPanel()
+    }
+    this.setState({ previousChar: lastChar })
+    this.identifyKeyword(value)
+  }
+
+  renderComposer = (props) => {
     return (
-      <TouchableOpacity onPress={() => onSuggestionTap(item.username, hidePanel)}>
+      <View style={styles.wrapper}>
+        <Animated.View
+          style={[styles.suggestionsContainer, { height: this.state.suggestionRowHeight }]}
+        >
+          <FlatList
+            keyboardShouldPersistTaps={'always'}
+            horizontal={false}
+            ListEmptyComponent={this.loadingComponent}
+            enableEmptySections={true}
+            data={this.state.userData}
+            keyExtractor={(item) => `${item.id}`}
+            renderItem={(item, index) => this.renderSuggestionsRow(item, index)}
+          />
+        </Animated.View>
+        <View style={styles.composerContainer}>
+          <View style={styles.inputContainer}>
+            <Composer
+              {...props}
+              placeholder={'Type something...'}
+              ref={(input) => {
+                this.msgInput = input
+              }}
+              onTextChanged={(value) => this.onTextChange(value, props)}
+              style={styles.textInput}
+              value={props.text}
+              multiline={true}
+            />
+          </View>
+          <Send {...props} containerStyle={styles.sendWrapperStyle}>
+            <View style={styles.sendContainer}>
+              <Image source={require('../../assets/Send.png')} style={styles.sendIconStyle} />
+            </View>
+          </Send>
+        </View>
+      </View>
+    )
+  }
+
+  loadingComponent = () => {
+    return (
+      <View style={{ flex: 1, width, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator />
+      </View>
+    )
+  }
+
+  renderSuggestionsRow = ({ item }) => {
+    const profileImage = item.image === null ? Images.userLogo : { uri: item.image }
+    return (
+      <TouchableOpacity
+        style={styles.suggestionClickStyle}
+        onPress={() => this.onSuggestionTap(item)}
+      >
         <View style={styles.suggestionsRowContainer}>
           <View style={styles.userIconBox}>
             <Text style={styles.usernameInitials}>
@@ -122,76 +230,53 @@ export const ChatScreen = () => {
       </TouchableOpacity>
     )
   }
-  const renderComposer = (props) => {
+
+  onSuggestionTap(dataObj) {
+    this.closeSuggestionsPanel()
+    const sliceText = this.state.messageText.slice(0, -this.state.keyword.length)
+    this.setState({
+      messageText: sliceText + '@' + dataObj.name + ' ',
+      keyword: ' ',
+    })
+  }
+
+  render() {
     return (
-      <View style={styles.composerContainer}>
-        <View style={styles.inputContainer}>
-          <MentionsTextInput
-            textInputStyle={styles.textInputStyle}
-            suggestionsPanelStyle={{ backgroundColor: 'rgba(100,100,100,0.1)' }}
-            loadingComponent={() => (
-              <View style={{ flex: 1, width, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator />
-              </View>
-            )}
-            textInputMinHeight={40}
-            textInputMaxHeight={90}
-            trigger={'@'}
-            triggerLocation={'new-word-only'} // 'new-word-only', 'anywhere'
-            value={value}
-            onChangeText={onChangeText}
-            triggerCallback={callback}
-            renderSuggestionsRow={renderSuggestionsRow}
-            suggestionsData={users} // array of objects
-            keyExtractor={(item, index) => item.username}
-            suggestionRowHeight={45}
-            horizontal={false} // defaut is true, change the orientation of the list
-            MaxVisibleRowCount={3} // this is required if horizontal={false}
-          />
-        </View>
-        <Send {...props}>
-          <View style={styles.sendContainer}>
-            <Image source={require('../../assets/Send.png')} style={styles.sendIconStyle} />
-          </View>
-        </Send>
+      <View style={styles.container}>
+        <GiftedChat
+          messages={this.state.messages}
+          onSend={(messages) => this.onSend(messages)}
+          renderComposer={this.renderComposer}
+          listViewProps={{
+            style: styles.listContainer,
+            contentContainerStyle: styles.msgListContainer,
+          }}
+          user={{ _id: 1 }}
+          renderMessage={(props) => {
+            return <MessageBubble messageObj={props.currentMessage} position={props.position} />
+          }}
+          renderAvatar={null}
+          renderSend={() => null}
+          text={this.state.messageText}
+          alwaysShowSend={true}
+          minComposerHeight={55}
+          maxComposerHeight={55}
+          bottomOffset={Platform.select({
+            ios: 200,
+            android: 0,
+          })}
+        />
+        <KeyboardAvoidingView
+          behavior={'padding'}
+          enabled
+          keyboardVerticalOffset={Platform.select({
+            ios: 15,
+            android: -160,
+          })}
+        />
       </View>
     )
   }
-
-  return (
-    <View style={styles.container}>
-      <GiftedChat
-        messages={messages}
-        onSend={onSend}
-        renderComposer={renderComposer}
-        user={{ _id: 1 }}
-        renderAvatar={null}
-        renderSend={() => null}
-        alwaysShowSend={true}
-        minComposerHeight={40}
-        maxComposerHeight={90}
-        bottomOffset={Platform.select({
-          ios: 200,
-          android: 0,
-        })}
-      />
-      <KeyboardAvoidingView
-        behavior={'padding'}
-        enabled
-        keyboardVerticalOffset={Platform.select({
-          ios: 15,
-          android: 0,
-        })}
-      />
-      <Button
-        title='Clear textinput'
-        color={THEME.MAIN_COLOR}
-        onPress={() => {
-          setValue('')
-        }}
-      />
-    </View>
-  )
 }
 
 ChatScreen.navigationOptions = ({ navigation }) => ({
@@ -205,21 +290,82 @@ ChatScreen.navigationOptions = ({ navigation }) => ({
 
 const styles = StyleSheet.create({
   container: {
-    height: 400,
+    flex: 1,
+    padding: 10,
+    width: '100%',
+    backgroundColor: 'rgb(245, 245, 245)',
   },
+  wrapper: {
+    justifyContent: 'flex-end',
+  },
+  msgListContainer: {
+    width: '100%',
+  },
+  listContainer: {
+    width: '100%',
+  },
+  sendIconStyle: {
+    height: 30,
+    width: 30,
+  },
+  composerContainer: {
+    width: '100%',
+    justifyContent: 'space-between',
+    flexDirection: 'row',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    width: '85%',
+  },
+  textInput: {
+    fontSize: 14,
+    letterSpacing: 1,
+    height: 50,
+
+    borderWidth: 0,
+    paddingTop: 5,
+    paddingBottom: 5,
+    paddingLeft: 10,
+    paddingRight: 10,
+  },
+  sendWrapperStyle: {
+    width: '15%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  suggestionClickStyle: {
+    height: 55,
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: 'rgb(245, 245, 245)',
+    padding: 10,
+  },
+  suggestionsContainer: {
+    width: '100%',
+    position: 'absolute',
+    bottom: 55,
+  },
+
   suggestionsRowContainer: {
     flexDirection: 'row',
   },
   userAvatarBox: {
     width: 35,
     paddingTop: 2,
+    paddingBottom: 2,
   },
   userIconBox: {
-    height: 45,
-    width: 45,
+    height: 40,
+    width: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#54c19c',
+    backgroundColor: THEME.MAIN_COLOR,
   },
   usernameInitials: {
     color: '#fff',
@@ -239,32 +385,6 @@ const styles = StyleSheet.create({
   usernameText: {
     fontSize: 12,
     color: 'rgba(0,0,0,0.6)',
-  },
-  sendIconStyle: {
-    height: 40,
-    width: 40,
-  },
-  sendWrapperStyle: {
-    width: '10%',
-    alignItems: 'flex-end',
-    justifyContent: 'flex-end',
-  },
-  sendContainer: {
-    alignItems: 'flex-end',
-    justifyContent: 'flex-end',
-  },
-  inputContainer: {
-    width: '90%',
-  },
-  composerContainer: {
-    flexDirection: 'row',
-    width: width,
-  },
-  textInputStyle: {
-    borderColor: '#ebebeb',
-    borderWidth: 1,
-    padding: 5,
-    fontSize: 15,
   },
 })
 

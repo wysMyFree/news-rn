@@ -16,37 +16,44 @@ import {
 } from 'react-native'
 import { GiftedChat, Send } from 'react-native-gifted-chat'
 import Modal from 'react-native-modal'
+import { THEME } from '../theme'
 import MessageBubble from '../components/MessageBubble/MessageBuble'
 
 const userList = [
   {
     id: 1,
     name: 'Andy',
+    username: 'andy',
     image: 'https://via.placeholder.com/300.png/09f/fff',
   },
   {
     id: 2,
     name: 'Boromir',
-    image: 'https://via.placeholder.com/300.png/09f/fff',
+    username: 'boromir',
+    image: '',
   },
   {
     id: 3,
     name: 'Luc',
+    username: 'luc',
     image: 'https://via.placeholder.com/300.png/09f/fff',
   },
   {
     id: 4,
     name: 'Angel',
+    username: 'angel',
     image: 'https://via.placeholder.com/300.png/09f/fff',
   },
   {
     id: 5,
     name: 'Casedy',
+    username: 'casedy',
     image: 'https://via.placeholder.com/300.png/09f/fff',
   },
   {
     id: 6,
     name: 'User6',
+    username: 'user6',
     image: 'https://via.placeholder.com/300.png/09f/fff',
   },
 ]
@@ -113,7 +120,9 @@ export class SecondChatScreen extends React.Component {
             isLoading: false,
           })
         } else {
-          const userDataList = userList.filter((obj) => obj.name.indexOf(keyword.slice(1)) !== -1)
+          const userDataList = userList.filter(
+            (obj) => obj.name.toLowerCase().search(keyword.slice(1).toLowerCase()) !== -1
+          )
           this.setState({
             userData: [...userDataList],
             keyword,
@@ -185,15 +194,25 @@ export class SecondChatScreen extends React.Component {
   }
 
   renderSuggestionsRow = ({ item }) => {
-    const profileImage = item.image === null ? Images.userLogo : { uri: item.image }
     return (
       <TouchableOpacity
         style={styles.suggestionClickStyle}
         onPress={() => this.onSuggestionTap(item)}
       >
         <View style={styles.suggestionRowContainer}>
-          <Image style={styles.userImage} source={profileImage} />
-          <Text style={styles.userNameText}>{item.name}</Text>
+          {item.image ? (
+            <Image style={styles.userImage} source={{ uri: item.image }} />
+          ) : (
+            <View style={styles.userIconBox}>
+              <Text style={styles.usernameInitials}>
+                {!!item.name && item.name.substring(0, 2).toUpperCase()}
+              </Text>
+            </View>
+          )}
+          <View style={styles.userDetailsBox}>
+            <Text style={styles.displayNameText}>{item.name}</Text>
+            <Text style={styles.userNameText}>@{item.username}</Text>
+          </View>
         </View>
       </TouchableOpacity>
     )
@@ -221,7 +240,7 @@ export class SecondChatScreen extends React.Component {
           scrollOffset={this.state.scrollOffset}
           scrollOffsetMax={300 - 200}
           animationIn='fadeIn'
-          animationInTiming={100}
+          animationInTiming={200}
           animationOut='fadeOut'
           onModalShow={() => {
             this.msgInput.focus()
@@ -357,11 +376,32 @@ const styles = StyleSheet.create({
     width: 40,
     borderRadius: 50,
   },
-  userNameText: {
+  userDetailsBox: {
+    justifyContent: 'center',
+    paddingLeft: 10,
+    paddingRight: 15,
+    width: '90%',
+  },
+  displayNameText: {
     fontSize: 13,
-    letterSpacing: 1,
-    width: '80%',
-    marginLeft: 10,
+    fontWeight: '500',
+  },
+  userNameText: {
+    fontSize: 12,
+    color: 'rgba(0,0,0,0.6)',
+  },
+  userIconBox: {
+    height: 40,
+    width: 40,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.MAIN_COLOR,
+  },
+  usernameInitials: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 14,
   },
   modalContainer: {
     position: 'absolute',
