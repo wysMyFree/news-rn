@@ -23,7 +23,7 @@ const userList = [
   {
     id: 1,
     name: 'Andy',
-    username: 'andy',
+    username: 'Kotlin',
     image: 'https://via.placeholder.com/300.png/09f/fff',
   },
   {
@@ -53,7 +53,7 @@ const userList = [
   {
     id: 6,
     name: 'User6',
-    username: 'user6',
+    username: 'Pharell',
     image: 'https://via.placeholder.com/300.png/09f/fff',
   },
 ]
@@ -113,22 +113,20 @@ export class SecondChatScreen extends React.Component {
   updateSuggestions = (keyword) => {
     this.setState({ isLoading: true }, () => {
       if (Array.isArray(userList)) {
-        if (keyword.slice(1) === '') {
-          this.setState({
-            userData: [...userList],
-            keyword,
-            isLoading: false,
-          })
-        } else {
-          const userDataList = userList.filter(
-            (obj) => obj.name.toLowerCase().search(keyword.slice(1).toLowerCase()) !== -1
-          )
-          this.setState({
-            userData: [...userDataList],
-            keyword,
-            isLoading: false,
-          })
-        }
+        this.setState({
+          userData: [
+            ...userList.filter((obj) => {
+              if (keyword.slice(1) === '') return true
+              if (
+                obj.name.toLowerCase().includes(keyword.slice(1).toLowerCase()) ||
+                obj.username.toLowerCase().includes(keyword.slice(1).toLowerCase())
+              )
+                return true
+            }),
+          ],
+          keyword,
+          isLoading: false,
+        })
       }
     })
   }
@@ -223,6 +221,7 @@ export class SecondChatScreen extends React.Component {
     const sliceText = this.state.messageText.slice(0, -this.state.keyword.length)
     this.setState({
       messageText: sliceText + '@' + dataObj.name + ' ',
+      userData: [...userList],
       keyword: ' ',
     })
   }
@@ -240,7 +239,7 @@ export class SecondChatScreen extends React.Component {
           scrollOffset={this.state.scrollOffset}
           scrollOffsetMax={300 - 200}
           animationIn='fadeIn'
-          animationInTiming={200}
+          animationInTiming={600}
           animationOut='fadeOut'
           onModalShow={() => {
             this.msgInput.focus()
