@@ -28,31 +28,37 @@ export const chatReducer = (
       {
         id: 1,
         name: 'Andy',
+        username: 'Kotlin',
         image: 'https://via.placeholder.com/300.png/09f/fff',
       },
       {
         id: 2,
         name: 'Boromir',
-        image: 'https://via.placeholder.com/300.png/09f/fff',
+        username: 'boromir',
+        image: '',
       },
       {
         id: 3,
         name: 'Luc',
+        username: 'luc',
         image: 'https://via.placeholder.com/300.png/09f/fff',
       },
       {
         id: 4,
         name: 'Angel',
+        username: 'angel',
         image: 'https://via.placeholder.com/300.png/09f/fff',
       },
       {
         id: 5,
         name: 'Casedy',
+        username: 'casedy',
         image: 'https://via.placeholder.com/300.png/09f/fff',
       },
       {
         id: 6,
         name: 'User6',
+        username: 'Pharell',
         image: 'https://via.placeholder.com/300.png/09f/fff',
       },
     ],
