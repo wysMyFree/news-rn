@@ -36,7 +36,8 @@ export const ChatScreen = () => {
 
   React.useEffect(() => {
     if (modalVisible) {
-      openSuggestionsPanel(userData.length * 55)
+      const height = userData.length * 55 >= 180 ? 180 : userData.length * 55
+      openSuggestionsPanel(height)
     }
   }, [messageText])
 
@@ -229,6 +230,9 @@ const styles = StyleSheet.create({
   },
   wrapper: {
     bottom: 0,
+  },
+  suggestionsContainer: {
+    maxHeight: 180,
   },
   listContainer: {
     width: '100%',
