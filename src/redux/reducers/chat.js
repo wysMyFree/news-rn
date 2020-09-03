@@ -1,3 +1,5 @@
+import { GiftedChat } from 'react-native-gifted-chat'
+
 const ADD_MSG = 'ADD_MSG'
 
 export const chatReducer = (
@@ -9,7 +11,7 @@ export const chatReducer = (
         createdAt: new Date(),
         user: {
           _id: 2,
-          name: 'React Native',
+          name: 'RNgc',
           avatar: 'https://placeimg.com/140/140/any',
         },
       },
@@ -67,7 +69,7 @@ export const chatReducer = (
 ) => {
   switch (action.type) {
     case ADD_MSG: {
-      return { ...state, messages: [...state.messages, { ...action.message }] }
+      return { ...state, messages: GiftedChat.append(state.messages, action.message) }
     }
     default:
       return state

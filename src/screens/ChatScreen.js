@@ -20,12 +20,13 @@ import {
 import { GiftedChat, Send } from 'react-native-gifted-chat'
 import { THEME } from '../theme'
 import MessageBubble from '../components/MessageBubble/MessageBuble'
+import { addMessage } from '../redux/reducers/chat'
 
 const { width } = Dimensions.get('window')
 
 export const ChatScreen = () => {
   const { messages, userList } = useSelector(({ chat }) => chat)
-
+  const dispatch = useDispatch()
   const [messageText, setMessageText] = useState('')
   const [modalVisible, setModalVisible] = useState(false)
   const [userData, setUserData] = useState(userList)
@@ -57,9 +58,10 @@ export const ChatScreen = () => {
     }).start()
   }
 
-  const onSend = (message = []) => {
+  const onSend = React.useCallback((message = []) => {
     console.log(message)
-  }
+    dispatch(addMessage(message))
+  }, [])
 
   const updateSuggestions = (keyword) => {
     if (Array.isArray(userList)) {
@@ -242,8 +244,8 @@ const styles = StyleSheet.create({
     width: 30,
   },
   composerContainer: {
-    width: '100%',
     flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   inputContainer: {
     flexDirection: 'row',
@@ -309,7 +311,6 @@ const styles = StyleSheet.create({
     color: 'rgba(0,0,0,0.6)',
   },
   suggestionRowContainer: {
-    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
   },
