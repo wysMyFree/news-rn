@@ -15,6 +15,7 @@ import {
   CreateScreen,
   ChatScreen,
   SecondChatScreen,
+  ThirdChatScreen,
 } from '../screens'
 import { THEME } from '../theme'
 
@@ -117,6 +118,17 @@ const SecondChatNavigation = () => {
     </Stack.Navigator>
   )
 }
+const ThirdChatNavigation = () => {
+  return (
+    <Stack.Navigator screenOptions={screenOptionsConfig}>
+      <Stack.Screen
+        name='ThirdChatScreen'
+        component={ThirdChatScreen}
+        options={ThirdChatScreen.navigationOptions}
+      />
+    </Stack.Navigator>
+  )
+}
 const CreateNavigation = () => {
   return (
     <Stack.Navigator screenOptions={screenOptionsConfig}>
@@ -139,8 +151,9 @@ export const AppNavigation = () => {
           labelStyle: { fontFamily: 'roboto-bold' },
         }}
       >
-        <Drawer.Screen name='SecondChat' component={SecondChatNavigation} />
         <Drawer.Screen name='Chat' component={ChatNavigation} />
+        <Drawer.Screen name='SecondChat' component={SecondChatNavigation} />
+        <Drawer.Screen name='ThirdChat' component={ThirdChatNavigation} />
         <Drawer.Screen name='Main' component={BottomNavigation} />
         <Drawer.Screen name='About' component={AboutNavigation} />
         <Drawer.Screen name='Create' component={CreateNavigation} />

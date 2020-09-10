@@ -1,10 +1,16 @@
 import React, { Component } from 'react'
-import { View, Text } from 'react-native'
+import { View, Text, StyleSheet } from 'react-native'
 import styles from './style'
 import { getFormatedTime } from '../../helper'
 import { ParseText } from '../ParseText'
+import { EU } from 'react-native-mentions-editor'
 
 export default class MessageBubble extends Component {
+  formatMentionNode = (txt, key) => (
+    <Text key={key} style={styles.mention}>
+      {txt}
+    </Text>
+  )
   render() {
     const { messageObj, position } = this.props
     const timeStr = getFormatedTime(messageObj.created_at)
@@ -53,7 +59,9 @@ export default class MessageBubble extends Component {
           <View style={styles.rightBubble}>
             <View style={styles.rightBubbleContainer}>
               <View style={styles.textContainer}>
-                <ParseText textStyle={styles.userMsgText} text={messageText} />
+                <Text style={styles.userMsgText}>
+                  {EU.displayTextWithMentions(messageText, this.formatMentionNode)}
+                </Text>
                 <View style={styles.timeContainer}>
                   <Text style={[styles.timeText, { color: 'white', textAlign: 'right' }]}>
                     {timeStr.replace('at ', '')}
