@@ -60,11 +60,10 @@ const userList = [
 ]
 
 export class SecondChatScreen extends React.Component {
-  constructor(props) {
-    super(props)
+  constructor() {
+    super()
     this.mentionsMap = new Map()
     this.scrollViewRef = React.createRef()
-    this.previousChar = ' '
 
     this.state = {
       messages: [
@@ -89,7 +88,6 @@ export class SecondChatScreen extends React.Component {
           },
         },
       ],
-
       modalVisible: false,
       isLoading: false,
       scrollOffset: null,
@@ -97,13 +95,7 @@ export class SecondChatScreen extends React.Component {
       inputText: '',
       menIndex: 0,
       text: '',
-      formattedText: '',
-      keyword: '',
-
-      selection: {
-        start: 0,
-        end: 0,
-      },
+      selection: { start: 0, end: 0 },
     }
   }
 
@@ -120,12 +112,9 @@ export class SecondChatScreen extends React.Component {
       shouldAdd
     )
   }
-  startTracking(menIndex) {
-    this.setModalVisible(true)
-    this.setState({ keyword: '', menIndex })
-  }
 
   onSend(message = []) {
+    console.log(this.mentionsMap)
     console.log(message)
     this.setState((previousState) => ({
       messages: GiftedChat.append(previousState.messages, message),
@@ -146,22 +135,20 @@ export class SecondChatScreen extends React.Component {
                 return true
             }),
           ],
-          keyword,
+
           isLoading: false,
         })
       }
     })
   }
+
   identifyKeyword(val) {
     if (this.state.modalVisible) {
-      const pattern = new RegExp(`\\B@[a-z0-9_-]+|\\B@`, `gi`)
-      const keywordArray = val.substr(this.state.menIndex).match(pattern)
-      if (keywordArray && !!keywordArray.length) {
-        const lastKeyword = keywordArray[keywordArray.length - 1]
-        this.updateSuggestions(lastKeyword)
-      }
+      const { selection, menIndex } = this.state
+      this.updateSuggestions(val.substr(menIndex, selection.start - menIndex))
     }
   }
+
   checkForMention(inputText, selection) {
     /**
      * Open mentions list if user
@@ -169,13 +156,13 @@ export class SecondChatScreen extends React.Component {
      */
     const menIndex = selection.start - 1
     const lastChar = inputText.substr(menIndex, 1)
-    const wordBoundry = this.previousChar.trim().length === 0
-    if (lastChar === '@' && wordBoundry) {
-      this.startTracking(menIndex)
+
+    if (lastChar === '@') {
+      this.setModalVisible(true)
+      this.setState({ menIndex })
     } else if ((lastChar.trim() === '' && this.state.modalVisible) || inputText === '') {
       this.setModalVisible(false)
     }
-    this.previousChar = lastChar
     this.identifyKeyword(inputText)
   }
 
@@ -201,7 +188,6 @@ export class SecondChatScreen extends React.Component {
         .substr(menIndex + 1)
         .replace(/\s+/, '\x01')
         .split('\x01')[1] || ''
-
     /**
      * check if there are any adjecent mentions
      * subtracted in current selection.
@@ -217,10 +203,7 @@ export class SecondChatScreen extends React.Component {
     mentionKeys.forEach((key) => {
       remStr = `@${this.mentionsMap.get(key).username} ${remStr}`
     })
-    return {
-      initialStr,
-      remStr,
-    }
+    return { initialStr, remStr }
   }
 
   renderComposer = (props) => {
@@ -233,10 +216,12 @@ export class SecondChatScreen extends React.Component {
               this.msgInput = input
             }}
             value={this.state.inputText}
-            onChangeText={(value) => this.onChange(value, props)}
-            selection={this.state.selection}
+            onChangeText={this.onChange}
+            //            selection={this.state.selection}
             selectionColor={'#000'}
-            onSelectionChange={this.handleSelectionChange}
+            onSelectionChange={({ nativeEvent: { selection } }) => {
+              this.setState({ selection })
+            }}
             style={styles.textInput}
             multiline={true}
           />
@@ -303,83 +288,18 @@ export class SecondChatScreen extends React.Component {
     //set the mentions in the map.
     const menStartIndex = initialStr.length
     const menEndIndex = menStartIndex + (username.length - 1)
-
     this.mentionsMap.set([menStartIndex, menEndIndex], user)
 
     // update remaining mentions indexes
     let charAdded = Math.abs(text.length - inputText.length)
-    this.updateMentionsMap(
-      {
-        start: menEndIndex + 1,
-        end: text.length,
-      },
-      charAdded,
-      true
-    )
+    this.updateMentionsMap({ start: menEndIndex + 1, end: text.length }, charAdded, true)
 
+    this.setModalVisible(false)
     this.setState({
       inputText: text,
-      formattedText: this.formatText(text),
+      userData: [...userList],
+      text: this.formatTextWithMentions(text),
     })
-    this.setModalVisible(false)
-    this.setState({ userData: [...userList], keyword: ' ', menIndex: 0 })
-    this.sendMessageToComposer(text)
-  }
-
-  handleSelectionChange = ({ nativeEvent: { selection } }) => {
-    const prevSelc = this.state.selection
-    let newSelc = { ...selection }
-    if (newSelc.start !== newSelc.end) {
-      /**
-       * if user make or remove selection
-       * Automatically add or remove mentions
-       * in the selection.
-       */
-      newSelc = EU.addMenInSelection(newSelc, prevSelc, this.mentionsMap)
-    }
-    // else{
-    /**
-     * Update cursor to not land on mention
-     * Automatically skip mentions boundry
-     */
-    // setTimeout(()=>{
-
-    // })
-    // newSelc = EU.moveCursorToMentionBoundry(newSelc, prevSelc, this.mentionsMap, this.isTrackingStarted);
-    // }
-    this.setState({ selection: newSelc })
-  }
-
-  formatMentionNode = (txt, key) => (
-    <Text key={key} style={styles.mention}>
-      {txt}
-    </Text>
-  )
-
-  formatText(inputText) {
-    /**
-     * Format the Mentions
-     * and display them with
-     * the different styles
-     */
-    if (inputText === '' || !this.mentionsMap.size) return inputText
-    const formattedText = []
-    let lastIndex = 0
-    this.mentionsMap.forEach((men, [start, end]) => {
-      const initialStr = start === 1 ? '' : inputText.substring(lastIndex, start)
-      lastIndex = end + 1
-      formattedText.push(initialStr)
-      const formattedMention = this.formatMentionNode(
-        `@${men.username}`,
-        `${start}-${men.id}-${end}`
-      )
-      formattedText.push(formattedMention)
-      if (EU.isKeysAreSame(EU.getLastKeyInMap(this.mentionsMap), [start, end])) {
-        const lastStr = inputText.substr(lastIndex) //remaining string
-        formattedText.push(lastStr)
-      }
-    })
-    return formattedText
   }
 
   formatTextWithMentions(inputText) {
@@ -399,14 +319,7 @@ export class SecondChatScreen extends React.Component {
     return formattedText
   }
 
-  sendMessageToComposer(text) {
-    this.setState({
-      inputText: text,
-      text: this.formatTextWithMentions(text),
-    })
-  }
-
-  onChange = (inputText, props) => {
+  onChange = (inputText) => {
     let text = inputText
     const prevText = this.state.inputText
 
@@ -458,26 +371,12 @@ export class SecondChatScreen extends React.Component {
        * no need to worry about totalSelection End.
        * We already removed deleted mentions from the actual string.
        * */
-      this.updateMentionsMap(
-        {
-          start: selection.end,
-          end: prevText.length,
-        },
-        charDeleted,
-        false
-      )
+      this.updateMentionsMap({ start: selection.end, end: prevText.length }, charDeleted, false)
     } else {
       //update indexes on new charcter add
 
       let charAdded = Math.abs(text.length - prevText.length)
-      this.updateMentionsMap(
-        {
-          start: selection.end,
-          end: text.length,
-        },
-        charAdded,
-        true
-      )
+      this.updateMentionsMap({ start: selection.end, end: text.length }, charAdded, true)
       /**
        * if user type anything on the mention
        * remove the mention from the mentions array
@@ -490,15 +389,10 @@ export class SecondChatScreen extends React.Component {
       }
     }
 
-    this.setState({
-      inputText: text,
-      formattedText: this.formatText(text),
-      // selection,
-    })
+    this.setState({ inputText: text })
     this.checkForMention(text, selection)
     // const text = `${initialStr} @[${user.username}](id:${user.id}) ${remStr}`; //'@[__display__](__id__)' ///find this trigger parsing from react-mentions
-
-    this.sendMessageToComposer(text)
+    this.setState({ text: this.formatTextWithMentions(text) })
   }
 
   render() {

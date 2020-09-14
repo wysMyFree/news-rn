@@ -99,6 +99,7 @@ export default {
     fontSize: 16,
     fontWeight: '400',
     backgroundColor: 'rgba(36, 77, 201, 0.05)',
-    color: '#244dc9',
+    color: 'red',
+    //    color: '#244dc9',
   },
 }
