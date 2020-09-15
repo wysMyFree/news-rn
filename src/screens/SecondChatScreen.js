@@ -145,7 +145,11 @@ export class SecondChatScreen extends React.Component {
   identifyKeyword(val) {
     if (this.state.modalVisible) {
       const { selection, menIndex } = this.state
-      this.updateSuggestions(val.substr(menIndex, selection.start - menIndex))
+      const lenght = Platform.select({
+        ios: selection.start - menIndex,
+        android: selection.start - menIndex + 1,
+      })
+      this.updateSuggestions(val.substr(menIndex, lenght))
     }
   }
 
@@ -154,9 +158,9 @@ export class SecondChatScreen extends React.Component {
      * Open mentions list if user
      * start typing @ in the string anywhere.
      */
-    const menIndex = selection.start - 1
+    const menIndex = Platform.select({ ios: selection.start - 1, android: selection.start })
     const lastChar = inputText.substr(menIndex, 1)
-
+    console.log(selection)
     if (lastChar === '@') {
       this.setModalVisible(true)
       this.setState({ menIndex })
