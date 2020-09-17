@@ -2,130 +2,171 @@ import React, { useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { HeaderButtons, Item } from 'react-navigation-header-buttons'
 import { AppHeaderIcon } from '../components/AppHeaderIcon'
-import {
-  Platform,
-  Animated,
-  StyleSheet,
-  TextInput,
-  View,
-  Image,
-  Text,
-  Dimensions,
-  ActivityIndicator,
-  FlatList,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  YellowBox,
-} from 'react-native'
+import { Platform, StyleSheet, TextInput, View, Image, KeyboardAvoidingView } from 'react-native'
 import { GiftedChat, Send } from 'react-native-gifted-chat'
 import { THEME } from '../theme'
 import MessageBubble from '../components/MessageBubble/MessageBuble'
 import { addMessage } from '../redux/reducers/chat'
-
-const { width } = Dimensions.get('window')
+import {
+  setMentionIndex,
+  setSuggestionsData,
+  setTokenizedText,
+  setInputText,
+} from '../redux/reducers/mentions'
+import {
+  SuggestionsComponent,
+  formatTextWithMentions,
+  openSuggestionsPanel,
+  closeSuggestionsPanel,
+} from '../components/MentionsHelper/MentionsHelper'
+import { EU } from 'react-native-mentions-editor'
 
 export const ChatScreen = () => {
   const { messages, userList } = useSelector(({ chat }) => chat)
+  const { modalVisible, inputText, mentionIndex, tokenizedText } = useSelector(
+    ({ mentions }) => mentions
+  )
   const dispatch = useDispatch()
-  const [messageText, setMessageText] = useState('')
-  const [modalVisible, setModalVisible] = useState(false)
-  const [userData, setUserData] = useState(userList)
-  const [keyword, setKeyword] = useState(' ')
-  const [previousChar, setPreviousChar] = useState(' ')
-
-  const [suggestionRowHeight] = useState(new Animated.Value(0))
-
-  React.useEffect(() => {
-    if (modalVisible) {
-      const height = userData.length * 55 >= 180 ? 180 : userData.length * 55
-      openSuggestionsPanel(height)
-    }
-  }, [messageText])
-
-  const openSuggestionsPanel = (height) => {
-    setModalVisible(true)
-    Animated.timing(suggestionRowHeight, {
-      toValue: height ? height : suggestionRowHeight,
-      duration: 100,
-    }).start()
-  }
-
-  const closeSuggestionsPanel = () => {
-    setModalVisible(false)
-    Animated.timing(suggestionRowHeight, {
-      toValue: 0,
-      duration: 100,
-    }).start()
-  }
+  const [mentionsMap] = useState(new Map())
+  const [selection, setSelection] = useState({ start: 0, end: 0 })
 
   const onSend = React.useCallback((message = []) => {
     console.log(message)
     dispatch(addMessage(message))
   }, [])
 
-  const updateSuggestions = (keyword) => {
-    if (Array.isArray(userList)) {
-      setUserData([
-        ...userList.filter((obj) => {
-          if (keyword.slice(1) === '') return true
-          if (
-            obj.name.toLowerCase().includes(keyword.slice(1).toLowerCase()) ||
-            obj.username.toLowerCase().includes(keyword.slice(1).toLowerCase())
-          )
-            return true
-        }),
-      ])
-      setKeyword(keyword)
-    }
-  }
-  const identifyKeyword = (val) => {
-    if (modalVisible) {
-      const pattern = new RegExp(`\\B@[a-z0-9_-]+|\\B@`, `gi`)
-      const keywordArray = val.match(pattern)
-      if (keywordArray && !!keywordArray.length) {
-        const lastKeyword = keywordArray[keywordArray.length - 1]
-        updateSuggestions(lastKeyword)
+  React.useEffect(() => {
+    dispatch(setSuggestionsData(userList))
+  }, [userList])
+
+  const onTextChange = (text) => {
+    const prevText = inputText
+    if (text.length < prevText.length) {
+      /**
+       * if user is back pressing and it
+       * deletes the mention remove it from
+       * actual string.
+       */
+
+      let charDeleted = Math.abs(text.length - prevText.length)
+      const totalSelection = {
+        start: selection.start,
+        end: charDeleted > 1 ? selection.start + charDeleted : selection.start,
+      }
+      // REmove all the selected mentions
+
+      if (totalSelection.start === totalSelection.end) {
+        //single char deleting
+        const key = EU.findMentionKeyInMap(mentionsMap, totalSelection.start)
+        if (key && key.length) {
+          mentionsMap.delete(key)
+          /**
+           * don't need to worry about multi-char selection
+           * because our selection automatically select the
+           * whole mention string.
+           */
+          const initial = text.substring(0, key[0]) //mention start index
+          text = initial + text.substr(key[1]) // mentions end index
+          charDeleted = charDeleted + Math.abs(key[0] - key[1]) //1 is already added in the charDeleted
+          // selection = {
+          //     start: ((charDeleted+selection.start)-1),
+          //     end: ((charDeleted+selection.start)-1)
+          // }
+          mentionsMap.delete(key)
+        }
+      } else {
+        //multi-char deleted
+        const mentionKeys = EU.getSelectedMentionKeys(mentionsMap, totalSelection)
+        mentionKeys.forEach((key) => {
+          mentionsMap.delete(key)
+        })
+      }
+      /**
+       * update indexes on charcters remove
+       * no need to worry about totalSelection End.
+       * We already removed deleted mentions from the actual string.
+       * */
+      EU.updateRemainingMentionsIndexes(
+        mentionsMap,
+        { start: selection.end, end: prevText.length },
+        charDeleted,
+        false
+      )
+    } else {
+      //update indexes on new charcter add
+
+      let charAdded = Math.abs(text.length - prevText.length)
+      EU.updateRemainingMentionsIndexes(
+        mentionsMap,
+        { start: selection.end, end: text.length },
+        charAdded,
+        true
+      )
+      //if user type anything on the mention remove the mention from the mentions array
+      if (selection.start === selection.end) {
+        const key = EU.findMentionKeyInMap(mentionsMap, selection.start - 1)
+        if (key && key.length) {
+          mentionsMap.delete(key)
+        }
       }
     }
+    dispatch(setInputText(text))
+    checkForMention(text)
+    dispatch(setTokenizedText(formatTextWithMentions(text, mentionsMap)))
   }
-  const onTextChange = (value, props) => {
-    props.onTextChanged(value)
-    setMessageText(value)
-    const lastChar = value.substr(value.length - 1)
-    const wordBoundry = previousChar.trim().length === 0
-    if (lastChar === '@' && wordBoundry) {
+  const checkForMention = (inputText) => {
+    // Open mentions list if user start typing @ in the string anywhere.
+    const index = Platform.select({ ios: selection.start - 1, android: selection.start })
+    const lastChar = inputText.substr(index, 1)
+
+    if (lastChar === '@') {
       openSuggestionsPanel()
-    } else if ((lastChar === ' ' && modalVisible) || value === '') {
+      dispatch(setMentionIndex(index))
+    } else if ((lastChar.trim() === '' && modalVisible) || inputText === '') {
       closeSuggestionsPanel()
     }
-    setPreviousChar(lastChar)
-    identifyKeyword(value)
+    identifyKeyword(inputText)
   }
 
+  const identifyKeyword = (val) => {
+    if (modalVisible) {
+      const lenght = selection.start - mentionIndex
+      console.log('selection:', selection)
+      filterSuggestionsData(val.substr(mentionIndex, lenght))
+    }
+  }
+  const filterSuggestionsData = (keyword) => {
+    console.log(keyword)
+    if (Array.isArray(userList)) {
+      dispatch(
+        setSuggestionsData([
+          ...userList.filter((obj) => {
+            if (keyword.slice(1) === '') return true
+            if (
+              obj.name.toLowerCase().includes(keyword.slice(1).toLowerCase()) ||
+              obj.username.toLowerCase().includes(keyword.slice(1).toLowerCase())
+            )
+              return true
+          }),
+        ])
+      )
+    }
+  }
   const renderComposer = (props) => {
     return (
       <View style={styles.wrapper}>
-        <Animated.View style={[styles.suggestionsContainer, { height: suggestionRowHeight }]}>
-          <FlatList
-            keyboardShouldPersistTaps={'always'}
-            horizontal={false}
-            ListEmptyComponent={loadingComponent}
-            enableEmptySections={true}
-            data={userData}
-            style={styles.suggestionsList}
-            keyExtractor={(item) => `${item.id}`}
-            renderItem={(item, index) => renderSuggestionsRow(item, index)}
-          />
-        </Animated.View>
+        <SuggestionsComponent userList={userList} mentionsMap={mentionsMap} />
         <View style={styles.composerContainer}>
           <View style={styles.inputContainer}>
             <TextInput
-              {...props}
               placeholder={'Type something...'}
-              onChangeText={(value) => onTextChange(value, props)}
+              onChangeText={onTextChange}
               style={styles.textInput}
-              value={props.text}
-              multiline={true}
+              value={inputText}
+              multiline
+              onSelectionChange={({ nativeEvent: { selection } }) => {
+                setSelection(selection)
+              }}
             />
           </View>
           <Send {...props} containerStyle={styles.sendWrapperStyle}>
@@ -137,46 +178,6 @@ export const ChatScreen = () => {
       </View>
     )
   }
-
-  const loadingComponent = () => {
-    return (
-      <View style={{ flex: 1, width, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator />
-      </View>
-    )
-  }
-
-  const renderSuggestionsRow = ({ item }) => {
-    return (
-      <TouchableOpacity style={styles.suggestionClickStyle} onPress={() => onSuggestionTap(item)}>
-        <View style={styles.suggestionRowContainer}>
-          {item.image ? (
-            <Image style={styles.userImage} source={{ uri: item.image }} />
-          ) : (
-            <View style={styles.userIconBox}>
-              <Text style={styles.usernameInitials}>
-                {!!item.name && item.name.substring(0, 2).toUpperCase()}
-              </Text>
-            </View>
-          )}
-          <View style={styles.userDetailsBox}>
-            <Text style={styles.displayNameText}>{item.name}</Text>
-            <Text style={styles.userNameText}>@{item.username}</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    )
-  }
-
-  const onSuggestionTap = (dataObj) => {
-    closeSuggestionsPanel()
-    const sliceText = messageText.slice(0, -keyword.length)
-
-    setMessageText(sliceText + '@' + dataObj.name + ' ')
-    setUserData([...userList])
-    setKeyword(' ')
-  }
-
   return (
     <View style={styles.container}>
       <GiftedChat
@@ -193,7 +194,7 @@ export const ChatScreen = () => {
         }}
         renderAvatar={null}
         renderSend={() => null}
-        text={messageText}
+        text={tokenizedText}
         alwaysShowSend={true}
         minComposerHeight={55}
         maxComposerHeight={55}
@@ -233,9 +234,7 @@ const styles = StyleSheet.create({
   wrapper: {
     bottom: 0,
   },
-  suggestionsContainer: {
-    maxHeight: 180,
-  },
+
   listContainer: {
     width: '100%',
   },
@@ -271,54 +270,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  suggestionClickStyle: {
-    height: 55,
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: 'rgb(245, 245, 245)',
-    padding: 10,
-  },
-  userAvatarBox: {
-    width: 35,
-    paddingTop: 2,
-    paddingBottom: 2,
-  },
-  userIconBox: {
-    height: 40,
-    width: 40,
-    borderRadius: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: THEME.MAIN_COLOR,
-  },
-  usernameInitials: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  userDetailsBox: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingLeft: 10,
-    paddingRight: 15,
-  },
-  displayNameText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  usernameText: {
-    fontSize: 12,
-    color: 'rgba(0,0,0,0.6)',
-  },
-  suggestionRowContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  userImage: {
-    height: 40,
-    width: 40,
-    borderRadius: 50,
-  },
 })
-
-YellowBox.ignoreWarnings(['Animated: `useNativeDriver` was not specified.'])

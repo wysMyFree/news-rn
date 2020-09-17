@@ -145,11 +145,11 @@ export class SecondChatScreen extends React.Component {
   identifyKeyword(val) {
     if (this.state.modalVisible) {
       const { selection, menIndex } = this.state
-      const lenght = Platform.select({
+      const length = Platform.select({
         ios: selection.start - menIndex,
         android: selection.start - menIndex + 1,
       })
-      this.updateSuggestions(val.substr(menIndex, lenght))
+      this.updateSuggestions(val.substr(menIndex, length))
     }
   }
 
