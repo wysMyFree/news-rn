@@ -160,7 +160,7 @@ export class SecondChatScreen extends React.Component {
      */
     const menIndex = Platform.select({ ios: selection.start - 1, android: selection.start })
     const lastChar = inputText.substr(menIndex, 1)
-    console.log(selection)
+
     if (lastChar === '@') {
       this.setModalVisible(true)
       this.setState({ menIndex })

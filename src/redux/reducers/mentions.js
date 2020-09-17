@@ -34,7 +34,7 @@ export const mentionsReducer = (
       return { ...state, modalVisible: action.value }
     }
     case SET_SUGGESTIONS_DATA: {
-      return { ...state, suggestionsData: action.payload, modalVisible: false }
+      return { ...state, suggestionsData: action.payload }
     }
     case FILTER_SUGGESTIONS_DATA: {
       return {

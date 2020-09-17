@@ -13,7 +13,12 @@ import {
 } from 'react-native'
 import { EU } from 'react-native-mentions-editor'
 import { THEME } from '../../theme'
-import { setInputText, setSuggestionsData, setTokenizedText } from '../../redux/reducers/mentions'
+import {
+  setInputText,
+  setSuggestionsData,
+  setTokenizedText,
+  setModalVisible,
+} from '../../redux/reducers/mentions'
 import { useSelector, useDispatch } from 'react-redux'
 
 const { width } = Dimensions.get('window')
@@ -142,6 +147,7 @@ export const SuggestionsComponent = ({ userList, mentionsMap }) => {
     )
 
     closeSuggestionsPanel()
+    dispatch(setModalVisible(false))
     dispatch(setInputText(text))
     dispatch(setSuggestionsData(userList))
     dispatch(setTokenizedText(formatTextWithMentions(text, mentionsMap)))

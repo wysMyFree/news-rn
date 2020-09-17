@@ -12,6 +12,7 @@ import {
   setSuggestionsData,
   setTokenizedText,
   setInputText,
+  setModalVisible,
 } from '../redux/reducers/mentions'
 import {
   SuggestionsComponent,
@@ -41,6 +42,7 @@ export const ChatScreen = () => {
 
   const onTextChange = (text) => {
     const prevText = inputText
+
     if (text.length < prevText.length) {
       /**
        * if user is back pressing and it
@@ -114,29 +116,14 @@ export const ChatScreen = () => {
     checkForMention(text)
     dispatch(setTokenizedText(formatTextWithMentions(text, mentionsMap)))
   }
-  const checkForMention = (inputText) => {
-    // Open mentions list if user start typing @ in the string anywhere.
-    const index = Platform.select({ ios: selection.start - 1, android: selection.start })
-    const lastChar = inputText.substr(index, 1)
-
-    if (lastChar === '@') {
-      openSuggestionsPanel()
-      dispatch(setMentionIndex(index))
-    } else if ((lastChar.trim() === '' && modalVisible) || inputText === '') {
-      closeSuggestionsPanel()
-    }
-    identifyKeyword(inputText)
-  }
 
   const identifyKeyword = (val) => {
     if (modalVisible) {
       const lenght = selection.start - mentionIndex
-      console.log('selection:', selection)
       filterSuggestionsData(val.substr(mentionIndex, lenght))
     }
   }
   const filterSuggestionsData = (keyword) => {
-    console.log(keyword)
     if (Array.isArray(userList)) {
       dispatch(
         setSuggestionsData([
@@ -151,6 +138,20 @@ export const ChatScreen = () => {
         ])
       )
     }
+  }
+  const checkForMention = (inputText) => {
+    // Open mentions list if user start typing @ in the string anywhere.
+    const index = Platform.select({ ios: selection.start - 1, android: selection.start })
+    const lastChar = inputText.substr(index, 1)
+
+    if (lastChar === '@') {
+      openSuggestionsPanel()
+      dispatch(setMentionIndex(index))
+    } else if ((lastChar.trim() === '' && modalVisible) || inputText === '') {
+      closeSuggestionsPanel()
+      dispatch(setModalVisible(false))
+    }
+    identifyKeyword(inputText)
   }
   const renderComposer = (props) => {
     return (
