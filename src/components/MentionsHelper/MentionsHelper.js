@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
   Animated,
   StyleSheet,
@@ -11,13 +11,15 @@ import {
   TouchableOpacity,
   YellowBox,
 } from 'react-native'
-import { EU } from 'react-native-mentions-editor'
+import { MentionUtils } from './MentionUtils'
 import { THEME } from '../../theme'
 import {
   setInputText,
   setSuggestionsData,
   setTokenizedText,
   setModalVisible,
+  addMention,
+  updateRemainingMentionsIndexes,
 } from '../../redux/reducers/mentions'
 import { useSelector, useDispatch } from 'react-redux'
 
@@ -46,8 +48,8 @@ export const closeSuggestionsPanel = () => {
   }).start()
 }
 
-export const SuggestionsComponent = ({ userList, mentionsMap }) => {
-  const { modalVisible, inputText, mentionIndex, suggestionsData } = useSelector(
+export const SuggestionsComponent = ({ userList }) => {
+  const { modalVisible, inputText, mentionIndex, suggestionsData, mentionsArr } = useSelector(
     ({ mentions }) => mentions
   )
   const dispatch = useDispatch()
@@ -60,42 +62,53 @@ export const SuggestionsComponent = ({ userList, mentionsMap }) => {
   }, [inputText])
 
   const getInitialAndRemainingStrings = (inputText, menIndex) => {
-    /**
-     * extractInitialAndRemainingStrings
-     * this function extract the initialStr and remainingStr
-     * at the point of new Mention string.
-     * Also updates the remaining string if there
-     * are any adjacent mentions text with the new one.
-     */
     let initialStr = inputText.substr(0, menIndex).trim()
-    if (!EU.isEmpty(initialStr)) {
+    if (!MentionUtils.isEmpty(initialStr)) {
       initialStr = initialStr + ' '
     }
-    /**
-     * remove the characters adjacent with @ sign
-     * and extract the remaining part
-     */
+    // remove the characters adjacent with @ sign and extract the remaining part
     let remStr =
       inputText
         .substr(menIndex + 1)
         .replace(/\s+/, '\x01')
         .split('\x01')[1] || ''
     /**
-     * check if there are any adjecent mentions
-     * subtracted in current selection.
-     * add the adjacent mentions
-     * @tim@nic
-     * add nic back
+     * check if there are any adjecent mentions subtracted in current selection.
+     * add the adjacent mentions @tim@nic add nic back
      */
     const adjMentIndexes = {
       start: initialStr.length - 1,
       end: inputText.length - remStr.length - 1,
     }
-    const mentionKeys = EU.getSelectedMentionKeys(mentionsMap, adjMentIndexes)
+    const mentionKeys = MentionUtils.getSelectedMentionKeys(mentionsArr, adjMentIndexes)
     mentionKeys.forEach((key) => {
-      remStr = `@${mentionsMap.get(key).username} ${remStr}`
+      remStr = `@${mentionsArr[key].user.username} ${remStr}`
     })
     return { initialStr, remStr }
+  }
+
+  const onSuggestionTap = (user) => {
+    //  When user select a mention, Add a mention in the string, Also add a mention in the map
+    const { initialStr, remStr } = getInitialAndRemainingStrings(inputText, mentionIndex)
+
+    const username = `@${user.username}`
+    const text = `${initialStr}${username} ${remStr}`
+    //'@[__display__](__id__)' ///find this trigger parsing from react-mentions
+
+    //set the mentions in the map.
+    const menStartIndex = initialStr.length
+    const menEndIndex = menStartIndex + (username.length - 1)
+    dispatch(addMention(menStartIndex, menEndIndex, user))
+
+    // update remaining mentions indexes
+    let charAdded = Math.abs(text.length - inputText.length)
+    dispatch(updateRemainingMentionsIndexes(menEndIndex + 1, text.length, charAdded, true))
+
+    closeSuggestionsPanel()
+    dispatch(setModalVisible(false))
+    dispatch(setInputText(text))
+    dispatch(setSuggestionsData(userList))
+    dispatch(setTokenizedText(formatTextWithMentions(text, mentionsArr)))
   }
 
   const renderSuggestionsRow = ({ item }) => {
@@ -119,39 +132,7 @@ export const SuggestionsComponent = ({ userList, mentionsMap }) => {
       </TouchableOpacity>
     )
   }
-  const onSuggestionTap = (user) => {
-    /**
-     * When user select a mention.
-     * Add a mention in the string.
-     * Also add a mention in the map
-     */
 
-    const { initialStr, remStr } = getInitialAndRemainingStrings(inputText, mentionIndex)
-
-    const username = `@${user.username}`
-    const text = `${initialStr}${username} ${remStr}`
-    //'@[__display__](__id__)' ///find this trigger parsing from react-mentions
-
-    //set the mentions in the map.
-    const menStartIndex = initialStr.length
-    const menEndIndex = menStartIndex + (username.length - 1)
-    mentionsMap.set([menStartIndex, menEndIndex], user)
-
-    // update remaining mentions indexes
-    let charAdded = Math.abs(text.length - inputText.length)
-    EU.updateRemainingMentionsIndexes(
-      mentionsMap,
-      { start: menEndIndex + 1, end: text.length },
-      charAdded,
-      true
-    )
-
-    closeSuggestionsPanel()
-    dispatch(setModalVisible(false))
-    dispatch(setInputText(text))
-    dispatch(setSuggestionsData(userList))
-    dispatch(setTokenizedText(formatTextWithMentions(text, mentionsMap)))
-  }
   return (
     <Animated.View style={[styles.suggestionsContainer, { height: suggestionRowHeight }]}>
       <FlatList
@@ -168,17 +149,17 @@ export const SuggestionsComponent = ({ userList, mentionsMap }) => {
   )
 }
 
-export const formatTextWithMentions = (inputText, mentionsMap) => {
-  if (inputText === '' || !mentionsMap.size) return inputText
+export const formatTextWithMentions = (value, map) => {
+  if (value === '' || !map.size) return value
   let formattedText = ''
   let lastIndex = 0
-  mentionsMap.forEach((men, [start, end]) => {
-    const initialStr = start === 1 ? '' : inputText.substring(lastIndex, start)
+  map.forEach((men, [start, end]) => {
+    const initialStr = start === 1 ? '' : value.substring(lastIndex, start)
     lastIndex = end + 1
     formattedText = formattedText.concat(initialStr)
     formattedText = formattedText.concat(`@[${men.username}](id:${men.id})`)
-    if (EU.isKeysAreSame(EU.getLastKeyInMap(mentionsMap), [start, end])) {
-      const lastStr = inputText.substr(lastIndex) //remaining string
+    if (MentionUtils.isKeysAreSame(MentionUtils.getLastKeyInMap(map), [start, end])) {
+      const lastStr = value.substr(lastIndex) //remaining string
       formattedText = formattedText.concat(lastStr)
     }
   })

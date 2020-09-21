@@ -114,8 +114,8 @@ export class SecondChatScreen extends React.Component {
   }
 
   onSend(message = []) {
-    console.log(this.mentionsMap)
     console.log(message)
+    console.log(this.mentionsMap)
     this.setState((previousState) => ({
       messages: GiftedChat.append(previousState.messages, message),
     }))

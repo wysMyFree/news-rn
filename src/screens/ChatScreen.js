@@ -13,6 +13,8 @@ import {
   setTokenizedText,
   setInputText,
   setModalVisible,
+  updateRemainingMentionsIndexes,
+  eraseMention,
 } from '../redux/reducers/mentions'
 import {
   SuggestionsComponent,
@@ -20,15 +22,14 @@ import {
   openSuggestionsPanel,
   closeSuggestionsPanel,
 } from '../components/MentionsHelper/MentionsHelper'
-import { EU } from 'react-native-mentions-editor'
+import { MentionUtils } from '../components/MentionsHelper/MentionUtils'
 
 export const ChatScreen = () => {
   const { messages, userList } = useSelector(({ chat }) => chat)
-  const { modalVisible, inputText, mentionIndex, tokenizedText } = useSelector(
+  const { modalVisible, inputText, mentionIndex, tokenizedText, mentionsArr } = useSelector(
     ({ mentions }) => mentions
   )
   const dispatch = useDispatch()
-  const [mentionsMap] = useState(new Map())
   const [selection, setSelection] = useState({ start: 0, end: 0 })
 
   const onSend = React.useCallback((message = []) => {
@@ -41,16 +42,10 @@ export const ChatScreen = () => {
   }, [userList])
 
   const onTextChange = (text) => {
-    const prevText = inputText
+    if (text.length < inputText.length) {
+      // if user is back pressing and it deletes the mention remove it from actual string
 
-    if (text.length < prevText.length) {
-      /**
-       * if user is back pressing and it
-       * deletes the mention remove it from
-       * actual string.
-       */
-
-      let charDeleted = Math.abs(text.length - prevText.length)
+      let charDeleted = Math.abs(text.length - inputText.length)
       const totalSelection = {
         start: selection.start,
         end: charDeleted > 1 ? selection.start + charDeleted : selection.start,
@@ -59,62 +54,45 @@ export const ChatScreen = () => {
 
       if (totalSelection.start === totalSelection.end) {
         //single char deleting
-        const key = EU.findMentionKeyInMap(mentionsMap, totalSelection.start)
-        if (key && key.length) {
-          mentionsMap.delete(key)
-          /**
-           * don't need to worry about multi-char selection
-           * because our selection automatically select the
-           * whole mention string.
-           */
-          const initial = text.substring(0, key[0]) //mention start index
-          text = initial + text.substr(key[1]) // mentions end index
-          charDeleted = charDeleted + Math.abs(key[0] - key[1]) //1 is already added in the charDeleted
-          // selection = {
-          //     start: ((charDeleted+selection.start)-1),
-          //     end: ((charDeleted+selection.start)-1)
-          // }
-          mentionsMap.delete(key)
+        const index = MentionUtils.findMentionIndexInArr(mentionsArr, totalSelection.start)
+        if (index && index.length) {
+          dispatch(eraseMention(index))
+          // don't need to worry about multi-char selection because our selection automatically
+          //select the whole mention string.
+
+          const initial = text.substring(0, index[0]) //mention start index
+          text = initial + text.substr(index[1]) // mentions end index
+          charDeleted = charDeleted + Math.abs(index[0] - index[1]) //1 is already added in the charDeleted
+
+          dispatch(eraseMention(index))
         }
       } else {
         //multi-char deleted
-        const mentionKeys = EU.getSelectedMentionKeys(mentionsMap, totalSelection)
-        mentionKeys.forEach((key) => {
-          mentionsMap.delete(key)
+        const mentionKeys = MentionUtils.getSelectedMentionKeys(mentionsArr, totalSelection)
+        mentionKeys.forEach((index) => {
+          dispatch(eraseMention(index))
         })
       }
-      /**
-       * update indexes on charcters remove
-       * no need to worry about totalSelection End.
-       * We already removed deleted mentions from the actual string.
-       * */
-      EU.updateRemainingMentionsIndexes(
-        mentionsMap,
-        { start: selection.end, end: prevText.length },
-        charDeleted,
-        false
-      )
+      // update indexes on charcters remove no need to worry about totalSelection End.
+      // We already removed deleted mentions from the actual string.
+
+      dispatch(updateRemainingMentionsIndexes(selection.end, inputText.length, charDeleted, false))
     } else {
       //update indexes on new charcter add
-
-      let charAdded = Math.abs(text.length - prevText.length)
-      EU.updateRemainingMentionsIndexes(
-        mentionsMap,
-        { start: selection.end, end: text.length },
-        charAdded,
-        true
-      )
+      let charAdded = Math.abs(text.length - inputText.length)
+      dispatch(updateRemainingMentionsIndexes(selection.end, text.length, charAdded, true))
+      console.log('onTextChange:', mentionsArr)
       //if user type anything on the mention remove the mention from the mentions array
       if (selection.start === selection.end) {
-        const key = EU.findMentionKeyInMap(mentionsMap, selection.start - 1)
-        if (key && key.length) {
-          mentionsMap.delete(key)
+        const ind = MentionUtils.findMentionIndexInArr(mentionsArr, selection.start - 1)
+        if (ind && ind.length) {
+          dispatch(eraseMention(ind))
         }
       }
     }
     dispatch(setInputText(text))
     checkForMention(text)
-    dispatch(setTokenizedText(formatTextWithMentions(text, mentionsMap)))
+    dispatch(setTokenizedText(formatTextWithMentions(text, mentionsArr)))
   }
 
   const identifyKeyword = (val) => {
@@ -156,7 +134,7 @@ export const ChatScreen = () => {
   const renderComposer = (props) => {
     return (
       <View style={styles.wrapper}>
-        <SuggestionsComponent userList={userList} mentionsMap={mentionsMap} />
+        <SuggestionsComponent userList={userList} />
         <View style={styles.composerContainer}>
           <View style={styles.inputContainer}>
             <TextInput
